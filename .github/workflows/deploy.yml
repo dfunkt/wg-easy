@@ -13,9 +13,6 @@ jobs:
   docker-build:
     name: Build Docker
     runs-on: ${{ matrix.arch.os }}
-    if: |
-      github.repository_owner == 'wg-easy' &&
-      startsWith(github.ref, 'refs/tags/v')
     permissions:
       packages: write
     strategy:
@@ -41,7 +38,7 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: |
-            ghcr.io/wg-easy/wg-easy
+            ghcr.io/dfunkt/wg-easy
           flavor: |
             latest=false
 
@@ -65,7 +62,7 @@ jobs:
           context: .
           platforms: ${{ matrix.arch.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: ghcr.io/wg-easy/wg-easy
+          tags: ghcr.io/dfunkt/wg-easy
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=build-${{ env.PLATFORM_PAIR }}
           cache-to: type=gha,mode=min,scope=build-${{ env.PLATFORM_PAIR }}
@@ -87,9 +84,6 @@ jobs:
   docker-merge:
     name: Merge & Deploy Docker
     runs-on: ubuntu-latest
-    if: |
-      github.repository_owner == 'wg-easy' &&
-      startsWith(github.ref, 'refs/tags/v')
     permissions:
       packages: write
     needs: docker-build
@@ -123,7 +117,7 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: |
-            ghcr.io/wg-easy/wg-easy
+            ghcr.io/dfunkt/wg-easy
             codeberg.org/wg-easy/wg-easy
           flavor: |
             latest=false
@@ -138,7 +132,7 @@ jobs:
           n=3
           for i in $(seq 1 $n); do
             docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-              $(printf 'ghcr.io/wg-easy/wg-easy@sha256:%s ' *) && break
+              $(printf 'ghcr.io/dfunkt/wg-easy@sha256:%s ' *) && break
 
             [ "$i" = "$n" ] && exit 1
             sleep 10
@@ -146,7 +140,7 @@ jobs:
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ghcr.io/wg-easy/wg-easy:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ghcr.io/dfunkt/wg-easy:${{ steps.meta.outputs.version }}
 
   docs:
     name: Build & Deploy Docs
