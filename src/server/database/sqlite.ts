@@ -23,7 +23,7 @@ export async function connect() {
   await migrate();
   const dbService = new DBService(db);
 
-  if (WG_INITIAL_ENV.ENABLED) {
+  if (WG_INITIAL_ENV.ENABLED || WG_ENV.OAUTH_AUTO_REGISTER) {
     await initialSetup(dbService);
   }
 
@@ -119,6 +119,31 @@ async function initialSetup(db: DBServiceType) {
     );
 
     await db.general.setSetupStep(0);
+  } else if (WG_ENV.OAUTH_AUTO_REGISTER) {
+    if (WG_INITIAL_ENV.HOST && WG_INITIAL_ENV.PORT) {
+      // OAuth handles admin creation and host/port is supplied via env,
+      // so the whole wizard (including its unauthenticated window) can be
+      // skipped entirely.
+      DB_DEBUG(
+        'OAuth auto-register enabled with INIT_HOST/INIT_PORT set. Skipping setup entirely...'
+      );
+      await db.userConfigs.updateHostPort(
+        WG_INITIAL_ENV.HOST,
+        WG_INITIAL_ENV.PORT
+      );
+      await db.general.setSetupStep(0);
+    } else if (setup.step === 1) {
+      // No INIT_HOST/INIT_PORT given, so host/port still has to be set once
+      // via the setup wizard (there's no other place to configure it).
+      // Skip only the local admin-account page (step 2) - OAuth handles
+      // that. NOTE: steps 3/4 remain reachable pre-authentication until
+      // completed, same as vanilla wg-easy's setup flow - set INIT_HOST/
+      // INIT_PORT to close that window entirely.
+      DB_DEBUG(
+        'OAuth auto-register enabled. Skipping initial admin account creation...'
+      );
+      await db.general.setSetupStep(3);
+    }
   }
 }
 
